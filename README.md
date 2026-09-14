@@ -11,7 +11,21 @@ Projeto final do curso Dev Full Stack — Infinity School.
 ![Prisma](https://img.shields.io/badge/Prisma-5-2D3748?logo=prisma&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
-![Testes](https://img.shields.io/badge/testes-28%20passando-4E9A6B)
+![Testes](https://img.shields.io/badge/testes-36%20passando-4E9A6B)
+
+## Links
+
+| | |
+|---|---|
+| **Aplicação no ar** | https://wayne-industries-web.vercel.app |
+| **API** | https://wayne-api-1vh8.onrender.com/api/v1/health |
+| **Repositório** | https://github.com/BlackJoness/wayne-industries |
+
+Entre com `bruce@wayne.com` e a senha `Wayne@123` para ver o perfil de Administrador de
+Segurança, depois com `alfred@wayne.com` para comparar com o perfil de Funcionário.
+
+> A API está hospedada em plano gratuito e hiberna após alguns minutos sem uso.
+> A primeira abertura pode levar cerca de um minuto.
 
 ---
 
@@ -170,7 +184,7 @@ curl -i -X DELETE http://localhost:3333/api/v1/resources/qualquer-id \
 npm test
 ```
 
-28 testes cobrindo o que quebra em produção:
+36 testes cobrindo o que quebra em produção:
 
 | Suíte | O que verifica |
 |---|---|
