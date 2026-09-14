@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { allowedOrigins } from './config/cors.js';
 import { accessRoutes } from './modules/access/access.routes.js';
 import { areasRoutes } from './modules/areas/areas.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
@@ -9,7 +10,7 @@ import { usersRoutes } from './modules/users/users.routes.js';
 export const routes = Router();
 
 routes.get('/health', (_request, response) => {
-  response.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  response.status(200).json({ status: 'ok', timestamp: new Date().toISOString(), allowedOrigins });
 });
 
 routes.use('/auth', authRoutes);

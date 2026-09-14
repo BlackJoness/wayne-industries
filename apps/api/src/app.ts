@@ -1,22 +1,27 @@
 import cors from 'cors';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
-import { env } from './config/env.js';
+import { allowedOrigins } from './config/cors.js';
 import { routes } from './routes.js';
 import { errorHandler } from './shared/middlewares/error-handler.js';
 import { notFoundHandler } from './shared/middlewares/not-found.js';
+import { isOriginAllowed } from './shared/utils/cors-origin.js';
 
 export function createApp(): Express {
   const app = express();
 
   app.set('trust proxy', 1);
-  app.use(helmet());
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+
   app.use(
     cors({
-      origin: env.CORS_ORIGIN.split(',').map((origin) => origin.trim()),
+      origin(origin, callback) {
+        callback(null, isOriginAllowed(origin, allowedOrigins));
+      },
       credentials: true,
     }),
   );
+
   app.use(express.json({ limit: '100kb' }));
 
   app.use('/api/v1', routes);
