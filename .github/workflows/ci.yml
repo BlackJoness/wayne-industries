@@ -1,0 +1,55 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    name: API — tipos e testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar Prisma Client
+        run: npm run --workspace @wayne/api db:generate --if-present || npx --workspace @wayne/api prisma generate
+
+      - name: Checar tipos
+        run: npm run typecheck --workspace @wayne/api
+
+      - name: Rodar testes
+        run: npm run test --workspace @wayne/api
+
+  web:
+    name: Web — tipos e build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar Prisma Client
+        run: npx --workspace @wayne/api prisma generate
+
+      - name: Checar tipos
+        run: npm run typecheck --workspace @wayne/web
+
+      - name: Build de produção
+        run: npm run build --workspace @wayne/web
+        env:
+          VITE_API_URL: http://localhost:3333/api/v1

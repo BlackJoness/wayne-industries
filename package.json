@@ -1,0 +1,28 @@
+{
+  "name": "wayne-industries",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de Gerenciamento de Segurança e Recursos das Indústrias Wayne",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:api": "npm run dev -w @wayne/api",
+    "dev:web": "npm run dev -w @wayne/web",
+    "build": "npm run build -w @wayne/api && npm run build -w @wayne/web",
+    "test": "npm run test -w @wayne/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "db:migrate": "npm run db:migrate -w @wayne/api",
+    "db:seed": "npm run db:seed -w @wayne/api",
+    "db:studio": "npm run db:studio -w @wayne/api",
+    "setup": "npm install && npm run db:generate && npm run db:deploy && npm run db:seed",
+    "db:generate": "npm run db:generate -w @wayne/api",
+    "db:deploy": "npm run db:deploy -w @wayne/api"
+  }
+}
