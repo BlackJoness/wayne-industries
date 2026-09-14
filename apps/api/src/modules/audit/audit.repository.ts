@@ -1,4 +1,4 @@
-import type { AuditAction, AuditLog, PrismaClient, Role } from '@prisma/client';
+import type { AuditAction, AuditLog, Prisma, PrismaClient, Role } from '@prisma/client';
 
 export interface AuditEntry {
   actorId: string;
@@ -7,6 +7,8 @@ export interface AuditEntry {
   action: AuditAction;
   changes?: Record<string, unknown>;
 }
+
+export type AuditLogWithActor = AuditLog & { actor: { id: string; name: string; role: Role } };
 
 export class AuditRepository {
   constructor(private readonly db: PrismaClient) {}
@@ -18,12 +20,14 @@ export class AuditRepository {
         entity: entry.entity,
         entityId: entry.entityId,
         action: entry.action,
-        changes: entry.changes ?? undefined,
+        // A fronteira com o Prisma exige o tipo Json dele. O restante da aplicação
+        // trabalha com um objeto comum, que é mais simples de montar nos serviços.
+        changes: (entry.changes ?? undefined) as Prisma.InputJsonValue | undefined,
       },
     });
   }
 
-  listRecent(limit: number): Promise<Array<AuditLog & { actor: { id: string; name: string; role: Role } }>> {
+  async listRecent(limit: number): Promise<AuditLogWithActor[]> {
     return this.db.auditLog.findMany({
       take: limit,
       orderBy: { createdAt: 'desc' },
