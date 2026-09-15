@@ -46,7 +46,7 @@ export class AuthService {
       throw new UnauthorizedError('Este usuário está inativo. Procure o administrador de segurança.');
     }
 
-    const token = signToken({ sub: user.id, role: user.role });
+    const token = signToken({ sub: user.id });
     return { token, user: toPublicUser(user) };
   }
 

@@ -1,4 +1,5 @@
-import { AccessResult, ResourceStatus, ResourceType } from '@prisma/client';
+import { AccessResult, ResourceStatus, ResourceType, Role } from '@prisma/client';
+import { hasClearance } from '../../shared/utils/role.js';
 import type { AuditRepository } from '../audit/audit.repository.js';
 import type { DashboardRepository } from './dashboard.repository.js';
 
@@ -28,54 +29,72 @@ const ENTITY_LABEL: Record<string, string> = {
   AreaPermission: 'a permissão de área',
 };
 
+export interface DashboardSummary {
+  totals: {
+    resources: number;
+    activeUsers: number;
+    areas: number;
+    grantedLast7Days: number;
+    deniedLast7Days: number;
+    /** Somente Gerente e Administrador de Segurança. */
+    estimatedValue?: number;
+  };
+  resourcesByType: Array<{ key: ResourceType; label: string; total: number }>;
+  resourcesByStatus: Array<{ key: ResourceStatus; label: string; total: number }>;
+  accessTrend: Array<{ date: string; label: string; granted: number; denied: number }>;
+  /** Somente Gerente e Administrador de Segurança. */
+  topDeniedAreas?: Array<{ areaId: string; name: string; code: string; total: number }>;
+  /** Somente Gerente e Administrador de Segurança. */
+  recentAccess?: Array<{
+    id: string;
+    result: AccessResult;
+    reason: string;
+    createdAt: Date;
+    userName: string;
+    areaName: string;
+  }>;
+  /** Somente Administrador de Segurança. */
+  recentActivity?: Array<{ id: string; createdAt: Date; actorName: string; description: string }>;
+}
+
 export class DashboardService {
   constructor(
     private readonly repository: DashboardRepository,
     private readonly audit: AuditRepository,
   ) {}
 
-  async summary() {
+  /**
+   * Monta o painel de acordo com o cargo do solicitante.
+   *
+   * O Funcionário recebe apenas números agregados. Nome de terceiros, motivo de
+   * negativa, trilha de auditoria e valor do patrimônio ficam fora do payload dele,
+   * pela mesma razão que `/access/logs` é restrito: auditoria de terceiros é sensível.
+   * A restrição acontece antes da consulta, e não filtrando o resultado depois.
+   */
+  async summary(role: Role): Promise<DashboardSummary> {
+    const canAudit = hasClearance(role, Role.MANAGER);
+    const isSecurityAdmin = role === Role.SECURITY_ADMIN;
+
     const sevenDaysAgo = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
-    const [
-      totalResources,
-      byType,
-      byStatus,
-      valueSum,
-      activeUsers,
-      totalAreas,
-      deniedLast7Days,
-      grantedLast7Days,
-      logsSince,
-      deniedByArea,
-      recentAccess,
-      recentAudit,
-    ] = await Promise.all([
-      this.repository.countResources(),
-      this.repository.groupResourcesByType(),
-      this.repository.groupResourcesByStatus(),
-      this.repository.sumResourceValue(),
-      this.repository.countUsers({ isActive: true }),
-      this.repository.countAreas({ isActive: true }),
-      this.repository.countAccessLogs({ result: AccessResult.DENIED, createdAt: { gte: sevenDaysAgo } }),
-      this.repository.countAccessLogs({ result: AccessResult.GRANTED, createdAt: { gte: sevenDaysAgo } }),
-      this.repository.listAccessLogsSince(sevenDaysAgo),
-      this.repository.topDeniedAreas(),
-      this.repository.recentAccessLogs(6),
-      this.audit.listRecent(6),
-    ]);
+    const [totalResources, byType, byStatus, activeUsers, totalAreas, deniedLast7Days, grantedLast7Days, logsSince] =
+      await Promise.all([
+        this.repository.countResources(),
+        this.repository.groupResourcesByType(),
+        this.repository.groupResourcesByStatus(),
+        this.repository.countUsers({ isActive: true }),
+        this.repository.countAreas({ isActive: true }),
+        this.repository.countAccessLogs({ result: AccessResult.DENIED, createdAt: { gte: sevenDaysAgo } }),
+        this.repository.countAccessLogs({ result: AccessResult.GRANTED, createdAt: { gte: sevenDaysAgo } }),
+        this.repository.listAccessLogsSince(sevenDaysAgo),
+      ]);
 
-    const areaIds = deniedByArea.map((row) => row.areaId);
-    const areas = areaIds.length > 0 ? await this.repository.areasByIds(areaIds) : [];
-    const areaById = new Map(areas.map((area) => [area.id, area]));
-
-    return {
+    const summary: DashboardSummary = {
       totals: {
         resources: totalResources,
         activeUsers,
         areas: totalAreas,
-        estimatedValue: valueSum,
         grantedLast7Days,
         deniedLast7Days,
       },
@@ -90,27 +109,47 @@ export class DashboardService {
         total: row.total,
       })),
       accessTrend: buildDailySeries(logsSince, sevenDaysAgo),
-      topDeniedAreas: deniedByArea.map((row) => ({
+    };
+
+    if (canAudit) {
+      const [estimatedValue, deniedByArea, recentAccess] = await Promise.all([
+        this.repository.sumResourceValue(),
+        this.repository.topDeniedAreas(),
+        this.repository.recentAccessLogs(6),
+      ]);
+
+      const areaIds = deniedByArea.map((row) => row.areaId);
+      const areas = areaIds.length > 0 ? await this.repository.areasByIds(areaIds) : [];
+      const areaById = new Map(areas.map((area) => [area.id, area]));
+
+      summary.totals.estimatedValue = estimatedValue;
+      summary.topDeniedAreas = deniedByArea.map((row) => ({
         areaId: row.areaId,
         name: areaById.get(row.areaId)?.name ?? 'Área removida',
         code: areaById.get(row.areaId)?.code ?? '—',
         total: row.total,
-      })),
-      recentAccess: recentAccess.map((log) => ({
+      }));
+      summary.recentAccess = recentAccess.map((log) => ({
         id: log.id,
         result: log.result,
         reason: log.reason,
         createdAt: log.createdAt,
         userName: log.user.name,
         areaName: log.area.name,
-      })),
-      recentActivity: recentAudit.map((entry) => ({
+      }));
+    }
+
+    if (isSecurityAdmin) {
+      const recentAudit = await this.audit.listRecent(6);
+      summary.recentActivity = recentAudit.map((entry) => ({
         id: entry.id,
         createdAt: entry.createdAt,
         actorName: entry.actor.name,
         description: `${entry.actor.name} ${ACTION_LABEL[entry.action] ?? 'alterou'} ${ENTITY_LABEL[entry.entity] ?? entry.entity}`,
-      })),
-    };
+      }));
+    }
+
+    return summary;
   }
 }
 

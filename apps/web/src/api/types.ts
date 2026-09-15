@@ -76,19 +76,24 @@ export interface AccessLog {
   area: AreaBrief;
 }
 
+/**
+ * Campos opcionais são omitidos pela API conforme o cargo do usuário.
+ * A tela decide o que exibir pela presença do campo, nunca pelo cargo:
+ * quem manda na autorização é o servidor.
+ */
 export interface DashboardSummary {
   totals: {
     resources: number;
     activeUsers: number;
     areas: number;
-    estimatedValue: number;
     grantedLast7Days: number;
     deniedLast7Days: number;
+    estimatedValue?: number;
   };
   resourcesByType: Array<{ key: ResourceType; label: string; total: number }>;
   resourcesByStatus: Array<{ key: ResourceStatus; label: string; total: number }>;
   accessTrend: Array<{ date: string; label: string; granted: number; denied: number }>;
-  topDeniedAreas: Array<{ areaId: string; name: string; code: string; total: number }>;
-  recentAccess: Array<{ id: string; result: AccessResult; reason: string; createdAt: string; userName: string; areaName: string }>;
-  recentActivity: Array<{ id: string; createdAt: string; actorName: string; description: string }>;
+  topDeniedAreas?: Array<{ areaId: string; name: string; code: string; total: number }>;
+  recentAccess?: Array<{ id: string; result: AccessResult; reason: string; createdAt: string; userName: string; areaName: string }>;
+  recentActivity?: Array<{ id: string; createdAt: string; actorName: string; description: string }>;
 }

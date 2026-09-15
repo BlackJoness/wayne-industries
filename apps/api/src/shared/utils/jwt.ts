@@ -1,11 +1,14 @@
 import jwt from 'jsonwebtoken';
-import type { Role } from '@prisma/client';
 import { env } from '../../config/env.js';
 import { UnauthorizedError } from '../errors/app-error.js';
 
+/**
+ * O token guarda apenas a identidade. Cargo e situação são carregados do banco a
+ * cada requisição, para que rebaixar ou desativar um usuário tenha efeito imediato
+ * em vez de esperar o token expirar.
+ */
 export interface TokenPayload {
   sub: string;
-  role: Role;
 }
 
 export function signToken(payload: TokenPayload): string {

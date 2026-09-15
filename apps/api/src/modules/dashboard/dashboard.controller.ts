@@ -4,7 +4,7 @@ import type { DashboardService } from './dashboard.service.js';
 export class DashboardController {
   constructor(private readonly service: DashboardService) {}
 
-  summary = async (_request: Request, response: Response): Promise<void> => {
-    response.status(200).json(await this.service.summary());
+  summary = async (request: Request, response: Response): Promise<void> => {
+    response.status(200).json(await this.service.summary(request.user!.role));
   };
 }

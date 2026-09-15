@@ -22,7 +22,7 @@ describe('política de origens do CORS', () => {
     expect(isOriginAllowed('https://wayne-industries-web.vercel.app', allowed)).toBe(true);
   });
 
-  it('libera pré-visualizações da Vercel', () => {
+  it('libera pré-visualizações da Vercel, que mudam de subdomínio a cada publicação', () => {
     const allowed = parseAllowedOrigins('https://wayne-industries-web.vercel.app');
     expect(isOriginAllowed('https://wayne-industries-edwi1rp18-jonesblack.vercel.app', allowed)).toBe(true);
   });
@@ -36,8 +36,15 @@ describe('política de origens do CORS', () => {
     expect(isOriginAllowed('https://site-malicioso.com', allowed)).toBe(false);
   });
 
+  it('bloqueia site de terceiros publicado na Vercel', () => {
+    const allowed = parseAllowedOrigins('https://wayne-industries-web.vercel.app');
+    expect(isOriginAllowed('https://site-qualquer.vercel.app', allowed)).toBe(false);
+    expect(isOriginAllowed('https://app-de-outra-pessoa.vercel.app', allowed)).toBe(false);
+  });
+
   it('bloqueia domínio que apenas termina parecido com vercel.app', () => {
     const allowed = parseAllowedOrigins('https://wayne-industries-web.vercel.app');
+    expect(isOriginAllowed('https://evil.com/x.vercel.app', allowed)).toBe(false);
     expect(isOriginAllowed('https://a.b.vercel.app.evil.com', allowed)).toBe(false);
   });
 });

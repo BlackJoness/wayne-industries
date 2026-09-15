@@ -11,7 +11,7 @@ Projeto final do curso Dev Full Stack — Infinity School.
 ![Prisma](https://img.shields.io/badge/Prisma-5-2D3748?logo=prisma&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
-![Testes](https://img.shields.io/badge/testes-36%20passando-4E9A6B)
+![Testes](https://img.shields.io/badge/testes-52%20passando-4E9A6B)
 
 ## Links
 
@@ -45,18 +45,23 @@ Entre com perfis diferentes para ver a interface e as permissões mudarem.
 
 ---
 
-## Como rodar em três comandos
+## Como rodar localmente
 
 Pré-requisitos: **Node 20 ou superior** e **Docker**.
 
 ```bash
 cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
 docker compose up -d
 npm run setup
 ```
 
-O `npm run setup` instala as dependências, aplica as migrations e popula o banco com os
-dados de demonstração. Depois disso:
+Cada aplicação carrega o próprio `.env`, porque é do diretório dela que o Prisma e o Vite
+são executados. O `.env` da raiz serve apenas às credenciais do container PostgreSQL.
+
+O `npm run setup` instala as dependências, gera o Prisma Client, aplica as migrations e
+popula o banco com os dados de demonstração. Depois disso:
 
 ```bash
 npm run dev:api    # http://localhost:3333/api/v1
@@ -67,7 +72,7 @@ Abra <http://localhost:5173> e entre com uma das contas da tabela acima.
 
 ### Sem Docker
 
-Suba um PostgreSQL local e ajuste `DATABASE_URL` no `.env` para apontar para ele.
+Suba um PostgreSQL local e ajuste `DATABASE_URL` em `apps/api/.env` para apontar para ele.
 O restante dos comandos é igual.
 
 ---
@@ -113,11 +118,13 @@ Todos os números vêm de agregações reais no PostgreSQL. Não há dado fixo n
 ```
 wayne-industries/
 ├── docker-compose.yml          # PostgreSQL 16
+├── .env.example                # credenciais do container
 ├── docs/
 │   ├── adrs/                   # 5 decisões arquiteturais registradas
 │   ├── api.md                  # referência completa de endpoints
 │   └── wayne-api.postman.json  # coleção para Insomnia ou Postman
 ├── apps/api/
+│   ├── .env.example            # DATABASE_URL, JWT_SECRET, CORS_ORIGIN
 │   ├── prisma/
 │   │   ├── schema.prisma       # 6 modelos, 5 enums
 │   │   └── seed.ts             # dados de Gotham para demonstração
@@ -151,7 +158,10 @@ O raciocínio por trás de cada escolha está em [`docs/adrs/`](docs/adrs/).
 
 | Ação | Funcionário | Gerente | Administrador |
 |---|:---:|:---:|:---:|
-| Ver o painel | sim | sim | sim |
+| Ver o painel (números agregados) | sim | sim | sim |
+| Ver o valor do inventário no painel | não | sim | sim |
+| Ver acessos de terceiros no painel | não | sim | sim |
+| Ver a trilha de auditoria no painel | não | não | sim |
 | Consultar recursos | sim | sim | sim |
 | Cadastrar e editar recurso | não | sim | sim |
 | Excluir recurso | não | não | sim |
@@ -163,6 +173,10 @@ O raciocínio por trás de cada escolha está em [`docs/adrs/`](docs/adrs/).
 
 A autorização é aplicada no servidor. O `RoleGuard` do React apenas esconde telas fora do
 perfil; chamar a rota diretamente com um token de nível inferior devolve **403**.
+
+O painel segue a mesma regra. `GET /dashboard` monta o payload conforme o cargo de quem
+pede, e os campos restritos nem chegam a ser consultados no banco. O frontend decide o que
+renderizar pela presença do campo, nunca pelo cargo: quem manda na autorização é a API.
 
 Teste você mesmo, com a API rodando:
 
@@ -184,14 +198,17 @@ curl -i -X DELETE http://localhost:3333/api/v1/resources/qualquer-id \
 npm test
 ```
 
-36 testes cobrindo o que quebra em produção:
+52 testes cobrindo o que quebra em produção:
 
 | Suíte | O que verifica |
 |---|---|
 | `access-policy.spec.ts` | O motor de decisão de acesso, incluindo permissão expirada e precedência do bloqueio por inatividade |
 | `auth-service.spec.ts` | Login, bloqueio de conta inativa, e a garantia de que o hash da senha nunca sai na resposta |
 | `resources-service.spec.ts` | CRUD, conflito de número de série, gravação da trilha de auditoria |
-| `authorization.spec.ts` | A cadeia real de middlewares: 401 sem token, 403 fora do perfil, 400 com corpo inválido, e ausência de stack trace no erro |
+| `authorization.spec.ts` | A cadeia real de middlewares: 401 sem token, 403 fora do perfil, 400 com corpo inválido, token de conta desativada rejeitado, e ausência de stack trace |
+| `users-service.spec.ts` | A trava que impede o administrador de rebaixar ou desativar a si mesmo, e o conflito de e-mail duplicado |
+| `dashboard-service.spec.ts` | Que o payload do Funcionário não contém acessos de terceiros, auditoria nem valor do patrimônio |
+| `cors-origin.spec.ts` | A política de origens, incluindo a rejeição de sites de terceiros publicados na Vercel |
 
 Os serviços são testados com repositórios falsos injetados no construtor, sem depender de
 banco. Isso mantém a suíte rápida e faz o CI rodar sem infraestrutura.
@@ -266,6 +283,21 @@ Depois do primeiro deploy, rode o seed uma vez para popular as contas de demonst
 Duas camadas de permissão convivem de propósito: `areas.minimum_role` resolve o caso geral
 e `area_permissions` resolve a exceção pontual, sem precisar promover ninguém para liberar
 uma única porta. O detalhe está no [ADR 0005](docs/adrs/0005-permissao-individual-alem-do-cargo.md).
+
+---
+
+## Decisões conscientes
+
+Pontos onde uma alternativa foi avaliada e descartada de propósito. Ficam registrados aqui
+para não parecerem descuido.
+
+| Decisão | Motivo | Custo aceito |
+|---|---|---|
+| O token JWT guarda só o `sub`; cargo e situação vêm do banco a cada requisição | Rebaixar ou desativar um usuário precisa ter efeito imediato. Com o cargo dentro do token, a mudança só valeria quando ele expirasse | Uma consulta adicional por requisição |
+| Token guardado em `localStorage` | Simplicidade, e a sessão viaja no cabeçalho `Authorization`, que o navegador não anexa sozinho entre origens | Exposição a XSS. Cookie `httpOnly` seria mais seguro e é o caminho natural de evolução |
+| CORS com `credentials: false` | Nada na aplicação depende de cookie entre origens | Migrar a sessão para cookie exigiria rever esta configuração |
+| `validate` grava o resultado com `Object.assign` em `request.query` | Funciona no Express 4, que é a versão em uso | Quebra no Express 5, onde `req.query` virou somente leitura. Dívida conhecida, registrada aqui |
+| Exclusão de usuário é lógica, não física | Preserva a integridade dos logs de acesso e da trilha de auditoria | O registro permanece na tabela |
 
 ---
 

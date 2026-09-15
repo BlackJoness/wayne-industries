@@ -18,7 +18,9 @@ export function createApp(): Express {
       origin(origin, callback) {
         callback(null, isOriginAllowed(origin, allowedOrigins));
       },
-      credentials: true,
+      // A sessão viaja no cabeçalho Authorization, não em cookie. Sem necessidade
+      // de credenciais, o navegador não anexa nada automaticamente entre origens.
+      credentials: false,
     }),
   );
 

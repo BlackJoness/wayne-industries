@@ -6,7 +6,14 @@
  * deixam de derrubar o ambiente publicado.
  */
 
-const VERCEL_PREVIEW = /^https:\/\/[a-z0-9][a-z0-9-]*\.vercel\.app$/;
+/**
+ * Pré-visualizações da Vercel deste projeto.
+ *
+ * Restrito ao prefixo do projeto de propósito: liberar qualquer `.vercel.app`
+ * permitiria que qualquer pessoa publicasse um site na plataforma e conversasse
+ * com esta API a partir do navegador de um usuário legítimo.
+ */
+const VERCEL_PREVIEW = /^https:\/\/wayne-industries[a-z0-9-]*\.vercel\.app$/;
 
 export function normalizeOrigin(origin: string): string {
   return origin.trim().toLowerCase().replace(/\/+$/, '');

@@ -20,9 +20,12 @@ export function DashboardPage() {
       ? Math.round((totals.deniedLast7Days / (totals.grantedLast7Days + totals.deniedLast7Days)) * 100)
       : 0;
 
+  // O valor do inventário só vem da API para Gerente e Administrador de Segurança.
   const figures = [
     { label: 'Recursos cadastrados', value: String(totals.resources) },
-    { label: 'Valor estimado do inventário', value: formatCurrency(totals.estimatedValue) },
+    ...(totals.estimatedValue !== undefined
+      ? [{ label: 'Valor estimado do inventário', value: formatCurrency(totals.estimatedValue) }]
+      : []),
     { label: 'Áreas monitoradas', value: String(totals.areas) },
     { label: 'Usuários ativos', value: String(totals.activeUsers) },
   ];
@@ -105,6 +108,7 @@ export function DashboardPage() {
           </ul>
         </Panel>
 
+        {data.topDeniedAreas ? (
         <Panel>
           <PanelHeader title="Áreas com mais negativas" hint="Onde as barreiras mais bloqueiam." />
           {data.topDeniedAreas.length === 0 ? (
@@ -122,7 +126,9 @@ export function DashboardPage() {
             </ul>
           )}
         </Panel>
+        ) : null}
 
+        {data.recentActivity ? (
         <Panel>
           <PanelHeader title="Atividades recentes" hint="Últimas alterações no sistema." />
           {data.recentActivity.length === 0 ? (
@@ -138,8 +144,10 @@ export function DashboardPage() {
             </ul>
           )}
         </Panel>
+        ) : null}
       </div>
 
+      {data.recentAccess ? (
       <Panel>
         <PanelHeader title="Últimas passagens registradas" hint="Leitura direta do log de acesso às áreas." />
         <ul className="divide-y divide-line">
@@ -161,6 +169,7 @@ export function DashboardPage() {
           ))}
         </ul>
       </Panel>
+      ) : null}
     </div>
   );
 }

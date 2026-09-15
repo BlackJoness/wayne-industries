@@ -97,10 +97,8 @@ export class ResourcesService {
       if (duplicated) throw new ConflictError('Já existe um recurso com este número de série.');
     }
 
-    const resource = await this.repository.update(id, {
-      ...data,
-      areaId: data.areaId === undefined ? undefined : data.areaId,
-    });
+    // Enviar areaId como null desvincula o recurso da área; omitir o campo mantém o vínculo.
+    const resource = await this.repository.update(id, data);
 
     await this.audit.record({
       actorId,
