@@ -29,6 +29,43 @@ Segurança, depois com `alfred@wayne.com` para comparar com o perfil de Funcion�
 
 ---
 
+## Do enunciado ao produto
+
+O briefing tinha três páginas e nenhuma especificação técnica. O primeiro trabalho não foi
+escrever código: foi transformar frases como "dashboard visualmente atraente" em requisitos
+com critério de aceite.
+
+### Como cada frase do enunciado virou requisito
+
+| Enunciado | Virou | Por quê |
+|---|---|---|
+| "Controle de acesso que permita apenas usuários autorizados a acessar áreas restritas" | Entidade **Área** com nível mínimo exigido, endpoint de tentativa de entrada e registro em `access_logs` com o resultado e o motivo de cada decisão. A regra vive numa função pura (`access.policy.ts`) que avalia, nesta ordem: usuário inativo, área inativa, permissão individual válida, hierarquia de cargo | Só login não é controle de acesso. Sem registro, não há como auditar quem tentou entrar onde |
+| "Autenticação e autorização para funcionários, gerentes e administradores de segurança" | JWT assinado com segredo de ambiente, senha com bcrypt, limite de dez tentativas de login a cada dez minutos, middlewares `authenticate` e `authorize` no servidor e permissão individual além do cargo | Esconder botão na tela não protege nada. A regra vive no backend ([ADR 0004](docs/adrs/0004-autorizacao-no-backend.md)) |
+| "Interface para gerenciar equipamentos, veículos e dispositivos de segurança" | CRUD de recursos com busca por nome ou número de série, filtros por categoria e situação, paginação no servidor e validação com Zod. Funcionário consulta, gerente cadastra e edita, só o administrador exclui. Toda alteração alimenta `audit_logs` | O requisito real era permissão diferente por perfil, não o formulário |
+| "Painel de controle visualmente atraente com dados relevantes" | Totais do inventário, série diária de acessos liberados e negados nos últimos sete dias, distribuição de recursos, ranking de áreas com mais negativas e atividades recentes, tudo por agregação real no PostgreSQL e filtrado pelo cargo de quem consulta | "Atraente" não é requisito. Quais números, de onde vêm e quem vê cada um, é |
+
+### O que ficou de fora, e por quê
+
+| Cortado | Motivo | Onde está registrado |
+|---|---|---|
+| Refresh token | Prazo de uma semana. JWT único de 8 horas atende ao uso interno | [Próximos passos](#próximos-passos) |
+| Testes end-to-end de interface | A lógica de autorização mora no backend, e é lá que os 52 testes estão | [Testes](#testes) |
+| Upload de foto do recurso | Não está no enunciado | [Próximos passos](#próximos-passos) |
+
+### Onde as decisões estão registradas
+
+| ADR | Decisão |
+|---|---|
+| [0001](docs/adrs/0001-monorepo-com-npm-workspaces.md) | Monorepo com npm workspaces |
+| [0002](docs/adrs/0002-arquitetura-em-camadas-por-modulo.md) | Arquitetura em camadas por módulo |
+| [0003](docs/adrs/0003-motor-de-politica-de-acesso-isolado.md) | Motor de política de acesso isolado |
+| [0004](docs/adrs/0004-autorizacao-no-backend.md) | Autorização no backend |
+| [0005](docs/adrs/0005-permissao-individual-alem-do-cargo.md) | Permissão individual além do cargo |
+
+Trade-offs menores (conteúdo do token, sessão, CORS) estão em [Decisões conscientes](#decisões-conscientes).
+
+---
+
 ## Credenciais de demonstração
 
 Senha para todas as contas: **`Wayne@123`**
@@ -77,42 +114,6 @@ O restante dos comandos é igual.
 
 ---
 
-## O que cada requisito do enunciado virou no sistema
-
-### Sistema de Gerenciamento de Segurança
-
-O controle de acesso não é apenas login. Existe a entidade **Área** com um nível mínimo
-exigido, e toda tentativa de entrada gera um registro em `access_logs` com o motivo da
-decisão, seja ela positiva ou negativa.
-
-A decisão é tomada por uma função pura em `apps/api/src/modules/access/access.policy.ts`,
-que avalia nesta ordem: usuário inativo, área inativa, permissão individual válida,
-hierarquia de cargo. Ela é a única fonte da regra e tem dez testes cobrindo os casos de
-fronteira.
-
-A autenticação usa JWT assinado com segredo de ambiente, senha protegida por bcrypt e
-limite de dez tentativas de login a cada dez minutos.
-
-### Gestão de Recursos
-
-CRUD completo de equipamentos, veículos e dispositivos de segurança, com busca por nome
-ou número de série, filtros por categoria e situação, paginação no servidor e validação
-de entrada com Zod.
-
-As permissões diferem por perfil: o funcionário consulta, o gerente cadastra e edita, e
-só o administrador exclui em definitivo. Toda alteração alimenta a trilha de auditoria
-em `audit_logs`.
-
-### Dashboard de Visualização
-
-Painel com totais do inventário, série diária de acessos liberados e negados nos últimos
-sete dias, distribuição de recursos por categoria e situação, ranking de áreas com mais
-negativas, atividades recentes e últimas passagens registradas.
-
-Todos os números vêm de agregações reais no PostgreSQL. Não há dado fixo na interface.
-
----
-
 ## Arquitetura
 
 ```
@@ -128,7 +129,7 @@ wayne-industries/
 │   ├── prisma/
 │   │   ├── schema.prisma       # 6 modelos, 5 enums
 │   │   └── seed.ts             # dados de Gotham para demonstração
-│   ├── tests/                  # 28 testes (Vitest + Supertest)
+│   ├── tests/                  # 52 testes (Vitest + Supertest)
 │   └── src/
 │       ├── config/             # env validado com Zod, cliente Prisma
 │       ├── shared/
@@ -310,3 +311,7 @@ Itens deliberadamente fora do escopo desta entrega, registrados para honestidade
   de contratos em `apps/web/src/api/types.ts`.
 - Testes end-to-end de interface com Playwright.
 - Upload de foto do recurso.
+
+---
+
+Feito por **Filipe Jones** · [LinkedIn](https://www.linkedin.com/in/filipe-jones/) · [GitHub](https://github.com/BlackJoness)
