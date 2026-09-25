@@ -29,6 +29,21 @@ Segurança, depois com `alfred@wayne.com` para comparar com o perfil de Funcion�
 
 ---
 
+## Telas
+
+| Login | Painel do Administrador de Segurança |
+|---|---|
+| ![Tela de login com as contas de demonstração](docs/screenshots/01-login.png) | ![Painel do administrador: inventário, valor estimado, gráficos e atividades](docs/screenshots/02-dashboard-administrador.png) |
+
+| Registro de acessos | Painel do Funcionário |
+|---|---|
+| ![Últimas passagens registradas, com acessos negados e o motivo de cada decisão](docs/screenshots/03-registro-de-acessos.png) | ![Painel do funcionário: sem valor do inventário e com menu reduzido, a autorização decidida pela API](docs/screenshots/04-dashboard-funcionario.png) |
+
+O mesmo painel muda conforme quem entra: o Funcionário não vê o valor do inventário nem
+as telas de áreas e usuários, porque a API não envia esses campos para o cargo dele.
+
+---
+
 ## Do enunciado ao produto
 
 O briefing tinha três páginas e nenhuma especificação técnica. O primeiro trabalho não foi
