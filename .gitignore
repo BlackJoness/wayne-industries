@@ -8,3 +8,5 @@ build/
 coverage/
 .vite/
 apps/api/prisma/dev.db
+docs/auditoria/*.json
+*.tsbuildinfo

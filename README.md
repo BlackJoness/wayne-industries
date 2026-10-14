@@ -76,6 +76,7 @@ com critério de aceite.
 | [0003](docs/adrs/0003-motor-de-politica-de-acesso-isolado.md) | Motor de política de acesso isolado |
 | [0004](docs/adrs/0004-autorizacao-no-backend.md) | Autorização no backend |
 | [0005](docs/adrs/0005-permissao-individual-alem-do-cargo.md) | Permissão individual além do cargo |
+| [0006](docs/adrs/0006-conventional-commits-e-hooks.md) | Conventional Commits, hooks de git e flags estritas do compilador |
 
 Trade-offs menores (conteúdo do token, sessão, CORS) estão em [Decisões conscientes](#decisões-conscientes).
 
@@ -136,7 +137,8 @@ wayne-industries/
 ├── docker-compose.yml          # PostgreSQL 16
 ├── .env.example                # credenciais do container
 ├── docs/
-│   ├── adrs/                   # 5 decisões arquiteturais registradas
+│   ├── adrs/                   # 6 decisões arquiteturais registradas
+│   ├── auditoria/              # auditoria do bundle com REA e guia de captura dinâmica
 │   ├── api.md                  # referência completa de endpoints
 │   └── wayne-api.postman.json  # coleção para Insomnia ou Postman
 ├── apps/api/
@@ -229,6 +231,10 @@ npm test
 Os serviços são testados com repositórios falsos injetados no construtor, sem depender de
 banco. Isso mantém a suíte rápida e faz o CI rodar sem infraestrutura.
 
+Três hooks de git protegem o histórico: `pre-commit` roda o typecheck, `commit-msg` exige
+mensagens no padrão [Conventional Commits](https://www.conventionalcommits.org/pt-br/) e
+`pre-push` roda a suíte inteira. Detalhes no [ADR 0006](docs/adrs/0006-conventional-commits-e-hooks.md).
+
 ---
 
 ## Segurança aplicada
@@ -246,6 +252,20 @@ banco. Isso mantém a suíte rápida e faz o CI rodar sem infraestrutura.
 | Exclusão lógica de usuários | `users.service.ts` |
 | Administrador não consegue se auto-rebaixar | `users.service.ts` |
 | Trilha de auditoria com autor e data | `audit_logs` |
+
+### Auditoria do bundle publicado
+
+O JavaScript entregue ao navegador foi analisado com o
+[REA](https://github.com/morluto/rea), que reconstrói módulos, rotas e operações de
+armazenamento sem executar o código. Resultado: nenhum segredo de servidor
+(`JWT_SECRET`, `DATABASE_URL`, senha do banco) chega ao bundle; o frontend consome apenas os
+endpoints documentados; e as três operações sobre o token em `localStorage` batem com a
+decisão registrada abaixo. Evidência, varredura de segredos e comandos para reproduzir em
+[`docs/auditoria/`](docs/auditoria/README.md).
+
+```bash
+npm run audit:web-bundle
+```
 
 ---
 
@@ -282,6 +302,7 @@ Depois do primeiro deploy, rode o seed uma vez para popular as contas de demonst
 | `npm run build` | Build de produção das duas aplicações |
 | `npm run db:studio` | Prisma Studio para inspecionar o banco |
 | `npm run db:reset` | Recria o banco do zero e roda o seed |
+| `npm run audit:web-bundle` | Build do frontend e análise estática do bundle com REA |
 
 ---
 

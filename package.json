@@ -23,6 +23,13 @@
     "db:studio": "npm run db:studio -w @wayne/api",
     "setup": "npm install && npm run db:generate && npm run db:deploy && npm run db:seed",
     "db:generate": "npm run db:generate -w @wayne/api",
-    "db:deploy": "npm run db:deploy -w @wayne/api"
+    "db:deploy": "npm run db:deploy -w @wayne/api",
+    "prepare": "husky",
+    "audit:web-bundle": "npm run build -w @wayne/web && npx -y rea-agents@latest analyze-javascript-application \"$PWD/apps/web/dist\" --json > docs/auditoria/bundle-web.json && echo \"Evidência gravada em docs/auditoria/bundle-web.json\""
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.2.3",
+    "@commitlint/config-conventional": "21.2.3",
+    "husky": "9.1.7"
   }
 }
